@@ -1,15 +1,18 @@
 // ============================================================
-// GIG ECONOMY TYCOON: SIMULATION ENGINE
-// The tick-based economic simulation that runs every "month"
+// GIG ECONOMY TYCOON: SIMULATION ENGINE v2.0
+// Rebalanced tick-based economic simulation (15-20% easier)
+// + Cash Flow Ledger, Sub-Service Breakdown, Dynamic Valuation
 // ============================================================
 
-import { SERVICES, TERRITORIES, CRISES, COMPETITORS, FUNDING_ROUNDS } from './gameState';
+import { SERVICES, TERRITORIES, CRISES, MARKET_SENTIMENTS, FUNDING_ROUNDS } from './gameState';
 
+// REBALANCED: Reduced burn multipliers by ~17%, increased growth by ~18%,
+// reduced competitor aggression in early game, reduced crisis frequency
 const DIFFICULTY_MULTIPLIERS = {
-  easy: { burnMult: 0.7, growthMult: 1.3, crisisChance: 0.5, competitorAggro: 0.5 },
-  normal: { burnMult: 1.0, growthMult: 1.0, crisisChance: 1.0, competitorAggro: 1.0 },
-  hard: { burnMult: 1.3, growthMult: 0.8, crisisChance: 1.5, competitorAggro: 1.4 },
-  nightmare: { burnMult: 1.6, growthMult: 0.6, crisisChance: 2.0, competitorAggro: 1.8 },
+  easy: { burnMult: 0.55, growthMult: 1.5, crisisChance: 0.35, competitorAggro: 0.35, earlyGameShield: 0.4 },
+  normal: { burnMult: 0.83, growthMult: 1.18, crisisChance: 0.8, competitorAggro: 0.75, earlyGameShield: 0.6 },
+  hard: { burnMult: 1.1, growthMult: 0.9, crisisChance: 1.3, competitorAggro: 1.2, earlyGameShield: 0.85 },
+  nightmare: { burnMult: 1.4, growthMult: 0.65, crisisChance: 1.8, competitorAggro: 1.6, earlyGameShield: 1.0 },
 };
 
 export function simulateTick(state) {
@@ -24,6 +27,31 @@ export function simulateTick(state) {
     newState.year += 1;
   }
 
+  // Calculate game age for early-game protection
+  const gameAgeMonths = (newState.year - 2024) * 12 + newState.month;
+  const earlyGameFactor = gameAgeMonths <= 6 ? diff.earlyGameShield : 1.0;
+
+  // ============ MARKET SENTIMENT (Dynamic Valuation) ============
+  // Roll for new sentiment every 3 months
+  if (gameAgeMonths % 3 === 0) {
+    const roll = Math.random();
+    let cumulative = 0;
+    for (const sentiment of MARKET_SENTIMENTS) {
+      cumulative += sentiment.chance;
+      if (roll <= cumulative) {
+        newState.marketSentiment = sentiment;
+        newState.valuationMultiplier = sentiment.multiplier;
+        if (sentiment.id !== 'neutral') {
+          newState.notifications.push({
+            type: sentiment.multiplier > 1 ? 'success' : 'warning',
+            message: `📊 Market Shift: ${sentiment.name} — Valuation multiplier ${sentiment.multiplier > 1 ? '↑' : '↓'} ${sentiment.multiplier}x`
+          });
+        }
+        break;
+      }
+    }
+  }
+
   // ============ CONSUMER SIMULATION ============
   const territory = TERRITORIES.find(t => t.id === newState.currentTerritory) || TERRITORIES[0];
   const maxMAU = territory.population * 0.4; // max 40% penetration
@@ -31,8 +59,8 @@ export function simulateTick(state) {
   // Price sensitivity: higher fare = lower growth
   const fareSensitivity = Math.max(0, 1 - (newState.baseFarePerKm - 2000) / 5000);
 
-  // Voucher effectiveness: diminishing returns
-  const voucherEffect = Math.min(0.15, newState.consumerVoucherBudget / 50_000_000_000);
+  // REBALANCED: Increased voucher effectiveness by ~20%
+  const voucherEffect = Math.min(0.18, newState.consumerVoucherBudget / 40_000_000_000);
 
   // Wait time effect: long waits kill satisfaction
   const waitTimeEffect = Math.max(0, 1 - (newState.averageWaitTime - 5) / 20);
@@ -40,10 +68,10 @@ export function simulateTick(state) {
   // Service breadth bonus
   const serviceBreadth = newState.unlockedServices.length / SERVICES.length;
 
-  // Calculate MAU growth
-  const baseGrowth = 0.08 * diff.growthMult;
-  const growthRate = (baseGrowth + voucherEffect) * fareSensitivity * waitTimeEffect * (1 + serviceBreadth * 0.5);
-  const churnRate = 0.03 + (newState.averageWaitTime > 10 ? 0.02 : 0) + (newState.appStability < 70 ? 0.03 : 0);
+  // REBALANCED: Higher base growth, reduced churn
+  const baseGrowth = 0.095 * diff.growthMult;
+  const growthRate = (baseGrowth + voucherEffect) * fareSensitivity * waitTimeEffect * (1 + serviceBreadth * 0.6);
+  const churnRate = 0.025 + (newState.averageWaitTime > 10 ? 0.015 : 0) + (newState.appStability < 70 ? 0.025 : 0);
 
   newState.mau = Math.min(maxMAU, Math.floor(newState.mau * (1 + growthRate - churnRate)));
   newState.mauGrowthRate = growthRate - churnRate;
@@ -53,25 +81,31 @@ export function simulateTick(state) {
     50 + fareSensitivity * 20 + waitTimeEffect * 15 + (newState.appStability / 100) * 15 + voucherEffect * 50
   ));
 
+  // Consumer retention (new metric)
+  newState.consumerRetention = Math.min(98, Math.max(40,
+    70 + (newState.consumerSatisfaction - 50) * 0.4 + serviceBreadth * 10
+  ));
+
   // ============ DRIVER SIMULATION ============
-  // Driver attraction based on commission and bonuses
-  const commissionAttractiveness = Math.max(0, 1 - (newState.driverCommission - 15) / 30); // Lower commission = happier drivers
-  const bonusAttractiveness = Math.min(0.3, newState.driverLoyaltyPool / 30_000_000_000);
+  // REBALANCED: More generous driver attraction with bonuses active
+  const commissionAttractiveness = Math.max(0, 1 - (newState.driverCommission - 15) / 30);
+  const bonusAttractiveness = Math.min(0.35, newState.driverLoyaltyPool / 25_000_000_000);
 
   // PR campaign poaching effect
-  const poachEffect = newState.prCampaignActive ? 0.05 : 0;
+  const poachEffect = newState.prCampaignActive ? 0.06 : 0;
 
-  // Calculate driver fleet growth
-  const driverGrowth = (0.04 + bonusAttractiveness + poachEffect) * commissionAttractiveness;
-  const driverChurn = 0.02 + (newState.driverSatisfaction < 40 ? 0.05 : 0) + (diff.competitorAggro * 0.02);
+  // REBALANCED: Higher driver growth, reduced competitor poaching in early game
+  const driverGrowth = (0.05 + bonusAttractiveness + poachEffect) * commissionAttractiveness;
+  const competitorPoach = diff.competitorAggro * 0.015 * earlyGameFactor;
+  const driverChurn = 0.018 + (newState.driverSatisfaction < 40 ? 0.04 : 0) + competitorPoach;
 
-  const desiredDrivers = newState.mau * 0.05; // Need 1 driver per 20 users
+  const desiredDrivers = newState.mau * 0.05;
   newState.activeDrivers = Math.max(100, Math.floor(newState.activeDrivers * (1 + driverGrowth - driverChurn)));
 
   // Supply-demand ratio
   newState.driverSupplyRatio = Math.min(2, newState.activeDrivers / Math.max(1, desiredDrivers));
 
-  // Average wait time (inversely proportional to supply ratio)
+  // Average wait time
   newState.averageWaitTime = Math.max(3, Math.min(25, 8 / newState.driverSupplyRatio));
 
   // Driver satisfaction
@@ -86,28 +120,91 @@ export function simulateTick(state) {
     newState.surgeMultiplier = 1.0;
   }
 
-  // ============ FINANCIAL SIMULATION ============
-  // Revenue calculation
+  // ============ FINANCIAL SIMULATION & SUB-SERVICE BREAKDOWN ============
   const avgTripsPerUserPerMonth = 8;
   const avgTripDistance = 7; // km
   const effectiveFare = newState.baseFarePerKm * newState.surgeMultiplier;
   const totalGMV = newState.mau * avgTripsPerUserPerMonth * avgTripDistance * effectiveFare;
 
-  // Revenue multiplier from services
-  const serviceMultiplier = newState.unlockedServices.reduce((mult, sId) => {
+  // Calculate per-service revenue breakdown
+  const servicePerformance = {};
+  let totalServiceRevenue = 0;
+
+  newState.unlockedServices.forEach(sId => {
     const svc = SERVICES.find(s => s.id === sId);
-    return mult + (svc ? (svc.revenueMultiplier - 1) * 0.3 : 0);
-  }, 1);
+    if (!svc) return;
 
-  newState.revenue = Math.floor(totalGMV * (newState.takeRate / 100) * serviceMultiplier);
+    // Each service contributes proportionally based on its revenue multiplier
+    const serviceGMVShare = totalGMV * svc.monthlyBaseRevenue * svc.revenueMultiplier;
+    const serviceRevenue = Math.floor(serviceGMVShare * (newState.takeRate / 100));
 
-  // Burn Rate calculation
-  const marketingBurn = (newState.consumerVoucherBudget + newState.driverLoyaltyPool + (newState.prCampaignActive ? newState.prCampaignCost : 0));
-  const operationalBurn = newState.engineeringBudget + (newState.activeDrivers * 50_000); // Base cost per driver
-  const serverCostPerUser = 500; // IDR per MAU per month
-  const serverBurn = newState.mau * serverCostPerUser * (newState.unlockedServices.length);
+    // Service-specific costs (complexity drives operational cost)
+    const serviceCost = Math.floor(serviceRevenue * (0.3 + (svc.complexityLoad - 1) * 0.15));
 
-  newState.burnRate = Math.floor((marketingBurn + operationalBurn + serverBurn) * diff.burnMult);
+    const serviceProfit = serviceRevenue - serviceCost;
+    totalServiceRevenue += serviceRevenue;
+
+    servicePerformance[sId] = {
+      name: svc.name,
+      icon: svc.icon,
+      revenue: serviceRevenue,
+      cost: serviceCost,
+      profit: serviceProfit,
+      isProfitable: serviceProfit >= 0,
+    };
+  });
+
+  // FinTech interest income (if fintech is unlocked)
+  let fintechInterest = 0;
+  if (newState.unlockedServices.includes('fintech')) {
+    // FinTech generates passive income from float/lending
+    fintechInterest = Math.floor(newState.mau * 200 * (newState.takeRate / 100));
+    if (servicePerformance['fintech']) {
+      servicePerformance['fintech'].revenue += fintechInterest;
+      servicePerformance['fintech'].profit += fintechInterest;
+    }
+    totalServiceRevenue += fintechInterest;
+  }
+
+  newState.servicePerformance = servicePerformance;
+  newState.revenue = totalServiceRevenue;
+
+  // ============ CASH FLOW LEDGER ============
+  // INFLOWS
+  const inflowRideCommissions = totalServiceRevenue;
+  const inflowVCFunding = 0; // Only non-zero on funding round months (handled separately)
+  const inflowFintechInterest = fintechInterest;
+  const totalInflow = inflowRideCommissions;
+
+  // OUTFLOWS — REBALANCED: Reduced server costs by ~15%, reduced base cost per driver
+  const outflowConsumerSubsidies = newState.consumerVoucherBudget;
+  const outflowDriverBonuses = newState.driverLoyaltyPool + (newState.prCampaignActive ? newState.prCampaignCost : 0);
+  const serverCostPerUser = 420; // REBALANCED: was 500, now 420 (16% reduction)
+  const outflowServerCosts = Math.floor(newState.mau * serverCostPerUser * (1 + (newState.unlockedServices.length - 1) * 0.6));
+  const outflowStaffSalaries = newState.engineeringBudget;
+  const outflowMarketingOverhead = Math.floor((outflowConsumerSubsidies + outflowDriverBonuses) * 0.08); // 8% overhead on marketing spend
+  const totalOutflow = outflowConsumerSubsidies + outflowDriverBonuses + outflowServerCosts + outflowStaffSalaries + outflowMarketingOverhead;
+
+  newState.cashFlow = {
+    inflow: {
+      rideCommissions: inflowRideCommissions,
+      vcFunding: inflowVCFunding,
+      fintechInterest: inflowFintechInterest,
+      totalInflow,
+    },
+    outflow: {
+      consumerSubsidies: outflowConsumerSubsidies,
+      driverBonuses: outflowDriverBonuses,
+      serverCosts: outflowServerCosts,
+      staffSalaries: outflowStaffSalaries,
+      marketingOverhead: outflowMarketingOverhead,
+      totalOutflow,
+    },
+    netCashFlow: totalInflow - totalOutflow,
+  };
+
+  // Apply difficulty multiplier to burn rate
+  newState.burnRate = Math.floor(totalOutflow * diff.burnMult);
 
   // EBITDA
   newState.ebitda = newState.revenue - newState.burnRate;
@@ -121,24 +218,24 @@ export function simulateTick(state) {
     return load + (svc ? svc.complexityLoad : 0);
   }, 0);
 
-  const trafficLoad = newState.mau / 1_000_000; // pressure from traffic
+  const trafficLoad = newState.mau / 1_000_000;
   const engineeringMitigation = Math.min(30, newState.engineeringBudget / 1_000_000_000);
 
+  // REBALANCED: Slightly more forgiving stability decay
   newState.appStability = Math.min(100, Math.max(20,
-    newState.appStability + engineeringMitigation * 0.5 - complexityLoad * 1.5 - trafficLoad * 2
+    newState.appStability + engineeringMitigation * 0.6 - complexityLoad * 1.2 - trafficLoad * 1.7
   ));
 
   // Tech points accumulation
   newState.techPoints += Math.floor(newState.engineeringBudget / 5_000_000_000);
 
   // ============ MARKET SHARE ============
-  // Market share is relative to total market users in territory
-  const totalMarketUsers = territory.population * 0.3; // 30% addressable market
+  const totalMarketUsers = territory.population * 0.3;
   const playerShare = (newState.mau / totalMarketUsers) * 100;
 
-  // Competitor response
-  const competitorGrowth = diff.competitorAggro * 0.02 * (1 - playerShare / 100);
-  newState.competitorMarketShare = Math.max(20, Math.min(90, 
+  // REBALANCED: Reduced competitor growth impact in early game
+  const competitorGrowth = diff.competitorAggro * 0.015 * earlyGameFactor * (1 - playerShare / 100);
+  newState.competitorMarketShare = Math.max(20, Math.min(90,
     100 - playerShare + competitorGrowth * 5
   ));
   newState.marketShare = Math.min(80, Math.max(1, Math.round(playerShare)));
@@ -146,7 +243,6 @@ export function simulateTick(state) {
   // ============ GAME PHASE UPDATES ============
   if (newState.isPublic) {
     newState.gamePhase = 'public';
-    // Stock price simulation
     const earningsSentiment = newState.ebitda > 0 ? 1.05 : 0.92;
     const growthSentiment = newState.mauGrowthRate > 0.05 ? 1.03 : 0.97;
     newState.stockPrice = Math.max(100, Math.floor(newState.stockPrice * earningsSentiment * growthSentiment * (0.95 + Math.random() * 0.1)));
@@ -156,23 +252,25 @@ export function simulateTick(state) {
     newState.gamePhase = 'growth';
   }
 
-  // ============ VALUATION UPDATE ============
+  // ============ DYNAMIC VALUATION UPDATE ============
   if (!newState.isPublic) {
     const revenueMultiple = newState.ebitda > 0 ? 25 : 15;
-    const mauValue = newState.mau * 500_000; // 500k IDR per user valuation
-    newState.valuation = Math.max(newState.valuation, Math.floor(
-      Math.max(newState.revenue * revenueMultiple, mauValue)
-    ));
+    const mauValue = newState.mau * 500_000;
+    const baseValuation = Math.max(newState.revenue * revenueMultiple, mauValue);
+    // Apply market sentiment multiplier
+    newState.valuation = Math.max(newState.valuation, Math.floor(baseValuation * newState.valuationMultiplier));
   } else {
-    newState.valuation = newState.stockPrice * 100_000_000; // simplified market cap
+    newState.valuation = newState.stockPrice * 100_000_000;
   }
 
   // ============ CRISIS CHECK ============
+  // REBALANCED: Crises are less frequent, especially in early game
   if (!newState.activeCrisis) {
     const eligibleCrises = CRISES.filter(c =>
       !newState.crisisHistory.includes(c.id) && c.condition(newState)
     );
-    if (eligibleCrises.length > 0 && Math.random() < 0.3 * diff.crisisChance) {
+    const crisisThreshold = 0.25 * diff.crisisChance * (gameAgeMonths <= 4 ? 0.3 : 1.0);
+    if (eligibleCrises.length > 0 && Math.random() < crisisThreshold) {
       const crisis = eligibleCrises[Math.floor(Math.random() * eligibleCrises.length)];
       newState.activeCrisis = crisis;
     }
@@ -184,7 +282,7 @@ export function simulateTick(state) {
     newState.gameOverReason = 'BANGKRUT! Cash runway habis. Startup Anda kehabisan uang dan gagal mendapatkan funding berikutnya.';
   }
 
-  if (newState.marketShare < 1 && newState.month > 12) {
+  if (newState.marketShare < 1 && gameAgeMonths > 12) {
     newState.isGameOver = true;
     newState.gameOverReason = 'TERGILAS KOMPETITOR! Market share Anda turun di bawah 1%. Investor menarik dukungan.';
   }
@@ -198,6 +296,7 @@ export function simulateTick(state) {
     burnRate: newState.burnRate,
     cash: newState.cash,
     marketShare: newState.marketShare,
+    netCashFlow: newState.cashFlow.netCashFlow,
   };
   newState.eventLog = [...newState.eventLog.slice(-23), logEntry];
 
@@ -246,7 +345,7 @@ export function resolveCrisis(state, choice) {
       break;
     case 'fight_regulation':
       newState.cash -= 10_000_000_000;
-      newState.appStability -= 5; // risk of suspension
+      newState.appStability -= 5;
       newState.notifications.push({ type: 'warning', message: '⚖️ Tim legal bekerja melawan regulasi. Biaya Rp 10M.' });
       break;
     case 'emergency_scale':
@@ -323,7 +422,7 @@ export function canIPO(state) {
   return (
     state.marketShare >= 40 &&
     state.unlockedServices.length >= 3 &&
-    state.revenue >= 50_000_000_000 && // 50B IDR annual equivalent (monthly * 12 simplified)
+    state.revenue >= 50_000_000_000 &&
     !state.isPublic
   );
 }
@@ -331,16 +430,24 @@ export function canIPO(state) {
 export function executeIPO(state) {
   if (!canIPO(state)) return state;
   let newState = { ...state };
-  const ipoValuation = newState.valuation * 1.5;
-  const ipoRaise = Math.floor(ipoValuation * 0.15); // 15% float
+  const ipoValuation = newState.valuation * 1.5 * newState.valuationMultiplier;
+  const ipoRaise = Math.floor(ipoValuation * 0.15);
   newState.cash += ipoRaise;
   newState.totalRaised += ipoRaise;
   newState.isPublic = true;
-  newState.stockPrice = Math.floor(ipoValuation / 100_000_000); // per share
+  newState.stockPrice = Math.floor(ipoValuation / 100_000_000);
   newState.founderEquity = Math.max(20, newState.founderEquity - 15);
   newState.gamePhase = 'public';
   newState.notifications.push({ type: 'success', message: `🔔 IPO BERHASIL! ${newState.companyName} melantai di bursa! Harga saham: Rp ${newState.stockPrice.toLocaleString()}` });
   newState.eventLog.push({ month: newState.month, year: newState.year, event: 'IPO', valuation: ipoValuation });
+
+  // Update cash flow to reflect IPO raise
+  newState.cashFlow = {
+    ...newState.cashFlow,
+    inflow: { ...newState.cashFlow.inflow, vcFunding: ipoRaise, totalInflow: newState.cashFlow.inflow.totalInflow + ipoRaise },
+    netCashFlow: newState.cashFlow.netCashFlow + ipoRaise,
+  };
+
   return newState;
 }
 
@@ -353,12 +460,22 @@ export function executeFundingRound(state, roundIndex) {
   if (state.mau < fundingRound.requiredMAU) return state;
 
   let newState = { ...state };
-  newState.cash += fundingRound.maxRaise;
-  newState.totalRaised += fundingRound.maxRaise;
+  // Apply valuation multiplier to raise amount during favorable market
+  const effectiveRaise = Math.floor(fundingRound.maxRaise * newState.valuationMultiplier);
+  newState.cash += effectiveRaise;
+  newState.totalRaised += effectiveRaise;
   newState.founderEquity -= fundingRound.dilution;
-  newState.valuation = fundingRound.targetValuation;
+  newState.valuation = Math.floor(fundingRound.targetValuation * newState.valuationMultiplier);
   newState.fundingRound += 1;
-  newState.notifications.push({ type: 'success', message: `💰 ${fundingRound.name} closed! Raised Rp ${(fundingRound.maxRaise / 1_000_000_000).toFixed(0)}M at Rp ${(fundingRound.targetValuation / 1_000_000_000_000).toFixed(1)}T valuation.` });
+
+  // Update cash flow ledger
+  newState.cashFlow = {
+    ...newState.cashFlow,
+    inflow: { ...newState.cashFlow.inflow, vcFunding: effectiveRaise, totalInflow: newState.cashFlow.inflow.totalInflow + effectiveRaise },
+    netCashFlow: newState.cashFlow.netCashFlow + effectiveRaise,
+  };
+
+  newState.notifications.push({ type: 'success', message: `💰 ${fundingRound.name} closed! Raised Rp ${(effectiveRaise / 1_000_000_000).toFixed(0)}M at Rp ${(newState.valuation / 1_000_000_000_000).toFixed(1)}T valuation.` });
   return newState;
 }
 
@@ -387,8 +504,7 @@ export function unlockTerritory(state, territoryId) {
   newState.cash -= territory.unlockCost;
   newState.unlockedTerritories = [...newState.unlockedTerritories, territoryId];
   newState.currentTerritory = territoryId;
-  // Reset regional metrics for new territory
-  newState.mau = Math.floor(newState.mau * 0.05); // Start with 5% of existing user base
+  newState.mau = Math.floor(newState.mau * 0.05);
   newState.marketShare = 5;
   newState.activeDrivers = Math.floor(newState.activeDrivers * 0.1);
   newState.notifications.push({ type: 'success', message: `🌏 Ekspansi ke ${territory.name}! Market share reset ke 5%. Perang baru dimulai!` });

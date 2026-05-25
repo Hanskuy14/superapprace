@@ -34,17 +34,17 @@ export default function MarketingTab({ state, dispatch }) {
           </div>
 
           {/* Effectiveness Preview */}
-          <div className="p-3 bg-gray-800 rounded-lg">
+          <div className="p-3 bg-gray-800 rounded-lg border border-gray-700/50">
             <span className="text-xs text-gray-500 uppercase tracking-wider">Estimated Growth Impact</span>
             <div className="mt-2 flex items-center gap-2">
-              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div className="flex-1 h-2.5 bg-gray-700 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-amber-500 to-red-500 rounded-full"
+                  className="h-full bg-gradient-to-r from-amber-500 to-red-500 rounded-full transition-all"
                   style={{ width: `${Math.min(100, (state.consumerVoucherBudget / 50_000_000_000) * 100)}%` }}
                 />
               </div>
-              <span className="text-xs text-amber-400">
-                +{Math.min(15, (state.consumerVoucherBudget / 50_000_000_000 * 15)).toFixed(1)}% growth
+              <span className="text-xs text-amber-400 font-mono">
+                +{Math.min(18, (state.consumerVoucherBudget / 40_000_000_000 * 18)).toFixed(1)}%
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1">⚠️ Diminishing returns setelah Rp 20M/bulan</p>
@@ -80,18 +80,18 @@ export default function MarketingTab({ state, dispatch }) {
             </div>
           </div>
 
-          {/* Driver attraction effect */}
-          <div className="p-3 bg-gray-800 rounded-lg">
+          {/* Driver retention effect */}
+          <div className="p-3 bg-gray-800 rounded-lg border border-gray-700/50">
             <span className="text-xs text-gray-500 uppercase tracking-wider">Driver Retention Effect</span>
             <div className="mt-2 flex items-center gap-2">
-              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div className="flex-1 h-2.5 bg-gray-700 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full"
+                  className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all"
                   style={{ width: `${Math.min(100, (state.driverLoyaltyPool / 30_000_000_000) * 100)}%` }}
                 />
               </div>
-              <span className="text-xs text-cyan-400">
-                +{Math.min(30, (state.driverLoyaltyPool / 30_000_000_000 * 30)).toFixed(0)}% retention
+              <span className="text-xs text-cyan-400 font-mono">
+                +{Math.min(35, (state.driverLoyaltyPool / 25_000_000_000 * 35)).toFixed(0)}%
               </span>
             </div>
           </div>
@@ -106,7 +106,7 @@ export default function MarketingTab({ state, dispatch }) {
         </p>
 
         <div className={`p-4 rounded-lg border ${
-          state.prCampaignActive ? 'border-emerald-500 bg-emerald-500/10' : 'border-gray-700 bg-gray-800'
+          state.prCampaignActive ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-gray-700 bg-gray-800'
         }`}>
           <div className="flex items-center justify-between">
             <div>
@@ -114,7 +114,7 @@ export default function MarketingTab({ state, dispatch }) {
                 {state.prCampaignActive ? '🟢 KAMPANYE AKTIF' : '⚪ Kampanye Nonaktif'}
               </span>
               <p className="text-xs text-gray-400 mt-1">
-                Biaya: {formatIDR(state.prCampaignCost)}/bulan | Efek: +5% driver poach rate
+                Biaya: {formatIDR(state.prCampaignCost)}/bulan | Efek: +6% driver poach rate
               </p>
             </div>
             <button
@@ -129,39 +129,66 @@ export default function MarketingTab({ state, dispatch }) {
             </button>
           </div>
         </div>
+
+        {state.prCampaignActive && (
+          <div className="mt-3 p-2 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+            <p className="text-xs text-emerald-400">
+              📊 Campaign is actively poaching drivers from competitors. Driver fleet growth boosted.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Burn Summary */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <h3 className="text-lg font-bold text-white mb-3">🔥 Total Bakar Uang (Marketing)</h3>
         
-        <div className="space-y-3">
-          <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
-            <span className="text-sm text-gray-400">Consumer Vouchers</span>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🎫</span>
+              <span className="text-sm text-gray-400">Consumer Vouchers</span>
+            </div>
             <span className="text-sm font-mono text-amber-400">{formatIDR(state.consumerVoucherBudget)}</span>
           </div>
-          <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
-            <span className="text-sm text-gray-400">Driver Bonus Pool</span>
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🏍️</span>
+              <span className="text-sm text-gray-400">Driver Bonus Pool</span>
+            </div>
             <span className="text-sm font-mono text-cyan-400">{formatIDR(state.driverLoyaltyPool)}</span>
           </div>
           {state.prCampaignActive && (
-            <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
-              <span className="text-sm text-gray-400">PR Campaign</span>
+            <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📢</span>
+                <span className="text-sm text-gray-400">PR Campaign</span>
+              </div>
               <span className="text-sm font-mono text-purple-400">{formatIDR(state.prCampaignCost)}</span>
             </div>
           )}
-          <div className="border-t border-gray-700 pt-2">
-            <div className="flex justify-between items-center p-2 bg-red-500/10 rounded border border-red-500/30">
+          <div className="border-t border-gray-700 pt-2 mt-2">
+            <div className="flex justify-between items-center p-3 bg-red-500/10 rounded-lg border border-red-500/30">
               <span className="text-sm font-medium text-red-400">TOTAL MARKETING BURN</span>
               <span className="text-sm font-mono font-bold text-red-400">{formatIDR(totalMarketingBurn)}/bln</span>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 p-3 bg-gray-800 rounded-lg">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        {/* Cost as % of revenue */}
+        <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-500">Marketing as % of Revenue</span>
+            <span className={`font-mono font-bold ${
+              state.revenue > 0 && (totalMarketingBurn / state.revenue) < 0.5 ? 'text-emerald-400' :
+              state.revenue > 0 && (totalMarketingBurn / state.revenue) < 1.0 ? 'text-amber-400' : 'text-red-400'
+            }`}>
+              {state.revenue > 0 ? `${((totalMarketingBurn / state.revenue) * 100).toFixed(0)}%` : '∞'}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
             <span>💡</span>
-            <span>Tips: Seimbangkan growth vs sustainability. VC suka growth, tapi jangan sampai cash habis sebelum next round!</span>
+            <span>Tips: Seimbangkan growth vs sustainability. Target &lt;50% marketing-to-revenue ratio untuk path to profitability.</span>
           </div>
         </div>
       </div>

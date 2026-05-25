@@ -7,11 +7,70 @@ export default function CapitalTab({ state, dispatch }) {
 
   return (
     <div className="space-y-6">
+      {/* Dynamic Valuation Multiplier Card (NEW) */}
+      <div className={`bg-gray-900 border rounded-xl p-6 ${
+        state.valuationMultiplier > 1 ? 'border-emerald-500/30' :
+        state.valuationMultiplier < 1 ? 'border-red-500/30' : 'border-gray-800'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-white mb-1">📊 Market Sentiment & Valuation</h3>
+            <p className="text-xs text-gray-500">Dynamic market conditions affect your valuation multiplier for fundraising.</p>
+          </div>
+          <div className={`text-right px-4 py-2 rounded-lg border ${
+            state.valuationMultiplier > 1 ? 'bg-emerald-500/10 border-emerald-500/30' :
+            state.valuationMultiplier < 1 ? 'bg-red-500/10 border-red-500/30' :
+            'bg-gray-800 border-gray-700'
+          }`}>
+            <span className="text-xs text-gray-400 block">Multiplier</span>
+            <span className={`text-2xl font-black ${
+              state.valuationMultiplier > 1 ? 'text-emerald-400' :
+              state.valuationMultiplier < 1 ? 'text-red-400' : 'text-white'
+            }`}>
+              {state.valuationMultiplier.toFixed(2)}x
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-gray-800/60 rounded-lg flex items-center gap-3">
+          <span className="text-xl">
+            {state.valuationMultiplier > 1.2 ? '🚀' :
+             state.valuationMultiplier > 1 ? '📈' :
+             state.valuationMultiplier < 0.8 ? '📉' :
+             state.valuationMultiplier < 1 ? '⚠️' : '➡️'}
+          </span>
+          <div>
+            <span className="text-sm font-medium text-white">{state.marketSentiment?.name || 'Stable Market'}</span>
+            <p className="text-xs text-gray-400">{state.marketSentiment?.description || 'Normal market conditions'}</p>
+          </div>
+        </div>
+
+        {state.valuationMultiplier > 1 && (
+          <div className="mt-3 p-2 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+            <p className="text-xs text-emerald-400">
+              💡 Market is hot! Raise capital now for better terms — {((state.valuationMultiplier - 1) * 100).toFixed(0)}% more favorable valuation.
+            </p>
+          </div>
+        )}
+        {state.valuationMultiplier < 1 && (
+          <div className="mt-3 p-2 bg-red-500/5 border border-red-500/20 rounded-lg">
+            <p className="text-xs text-red-400">
+              ⚠️ Bear market! Consider delaying fundraising — valuations are {((1 - state.valuationMultiplier) * 100).toFixed(0)}% depressed.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Funding Rounds */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <h3 className="text-lg font-bold text-white mb-1">💰 Funding Rounds</h3>
         <p className="text-xs text-gray-500 mb-4">
           Raise capital dari VC untuk fuel growth. Setiap round mendilusi equity founder.
+          {state.valuationMultiplier !== 1 && (
+            <span className={state.valuationMultiplier > 1 ? ' text-emerald-400' : ' text-red-400'}>
+              {' '}(Market sentiment {state.valuationMultiplier > 1 ? 'boosts' : 'reduces'} raise amounts by {Math.abs((state.valuationMultiplier - 1) * 100).toFixed(0)}%)
+            </span>
+          )}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -20,6 +79,8 @@ export default function CapitalTab({ state, dispatch }) {
             const isCurrent = index === state.fundingRound;
             const isLocked = index > state.fundingRound;
             const canRaise = isCurrent && state.mau >= round.requiredMAU;
+            const effectiveRaise = Math.floor(round.maxRaise * state.valuationMultiplier);
+            const effectiveValuation = Math.floor(round.targetValuation * state.valuationMultiplier);
 
             return (
               <div
@@ -40,11 +101,18 @@ export default function CapitalTab({ state, dispatch }) {
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Raise:</span>
-                    <span className="text-emerald-400">{formatIDR(round.maxRaise)}</span>
+                    <div className="text-right">
+                      <span className="text-emerald-400">{formatIDR(effectiveRaise)}</span>
+                      {state.valuationMultiplier !== 1 && isCurrent && (
+                        <span className={`ml-1 text-[10px] ${state.valuationMultiplier > 1 ? 'text-emerald-500' : 'text-red-500'}`}>
+                          ({state.valuationMultiplier > 1 ? '↑' : '↓'})
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Valuation:</span>
-                    <span className="text-cyan-400">{formatIDR(round.targetValuation)}</span>
+                    <span className="text-cyan-400">{formatIDR(effectiveValuation)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Dilution:</span>
@@ -102,7 +170,14 @@ export default function CapitalTab({ state, dispatch }) {
 
             <div className="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
               <span className="text-sm text-gray-400">Current Valuation</span>
-              <span className="text-lg font-bold text-cyan-400">{formatIDR(state.valuation)}</span>
+              <div className="text-right">
+                <span className="text-lg font-bold text-cyan-400">{formatIDR(state.valuation)}</span>
+                {state.valuationMultiplier !== 1 && (
+                  <span className={`block text-[10px] ${state.valuationMultiplier > 1 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {state.valuationMultiplier > 1 ? '↑' : '↓'} {state.marketSentiment?.name} effect
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
               <span className="text-sm text-gray-400">Total Raised</span>
