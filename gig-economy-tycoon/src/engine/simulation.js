@@ -287,6 +287,57 @@ export function simulateTick(state) {
     newState.gameOverReason = 'TERGILAS KOMPETITOR! Market share Anda turun di bawah 1%. Investor menarik dukungan.';
   }
 
+  // ============ ADVANCED USER ANALYTICS ============
+  const previousMAU = state.mau;
+  const mauChangePercent = previousMAU > 0 ? ((newState.mau - previousMAU) / previousMAU) * 100 : 0;
+
+  // MAU Segmentation
+  const loyalRatio = Math.min(0.75, 0.5 + (newState.consumerSatisfaction / 100) * 0.25);
+  const promoRatio = Math.min(0.4, Math.max(0.1, (newState.consumerVoucherBudget / 50_000_000_000) * 0.35));
+  const churnRatio = Math.max(0.02, churnRate);
+  const totalRatio = loyalRatio + promoRatio + churnRatio;
+  const loyalCustomers = Math.floor(newState.mau * (loyalRatio / totalRatio));
+  const promoHunters = Math.floor(newState.mau * (promoRatio / totalRatio));
+  const churnedUsers = newState.mau - loyalCustomers - promoHunters;
+
+  // Distance & Delivery stats
+  const territorySprawl = newState.unlockedTerritories.length;
+  const baseDistance = 5.5 + territorySprawl * 0.8 + (newState.mau / 1_000_000) * 1.2;
+  const analyticsAvgDistance = Math.min(15, Math.max(4, baseDistance + (Math.random() - 0.5) * 0.6));
+  const driverAvailabilityFactor = Math.max(0.6, Math.min(1.4, newState.driverSupplyRatio));
+  const avgDeliveryTime = Math.min(45, Math.max(12, (analyticsAvgDistance * 3.2) / driverAvailabilityFactor + (Math.random() - 0.5) * 2));
+
+  // Order volume
+  const avgTripsPerDay = Math.floor(newState.mau * avgTripsPerUserPerMonth / 30);
+  const baseCancellationRate = 3 + (100 - newState.consumerSatisfaction) * 0.08 + (newState.averageWaitTime > 10 ? 3 : 0);
+  const cancellationRate = Math.min(25, Math.max(2, baseCancellationRate + (Math.random() - 0.5) * 1.5));
+  const cancelledOrders = Math.floor(avgTripsPerDay * (cancellationRate / 100));
+  const dailyOrderVolume = avgTripsPerDay - cancelledOrders;
+
+  // Distance impact on economics: higher distance = higher fare but fewer trips/hour
+  if (analyticsAvgDistance > 8 && newState.activeDrivers < desiredDrivers * 1.2) {
+    // Fewer trips completed when distance is high and fleet is small
+    newState.mau = Math.floor(newState.mau * (1 - (analyticsAvgDistance - 8) * 0.005));
+  }
+
+  // Cancellation impact on satisfaction
+  if (cancellationRate > 10) {
+    newState.consumerSatisfaction = Math.max(0, newState.consumerSatisfaction - (cancellationRate - 10) * 0.5);
+  }
+
+  newState.userAnalytics = {
+    loyalCustomers,
+    promoHunters,
+    churnedUsers: Math.max(0, churnedUsers),
+    avgTripDistance: Math.round(analyticsAvgDistance * 10) / 10,
+    avgDeliveryTime: Math.round(avgDeliveryTime * 10) / 10,
+    dailyOrderVolume,
+    cancelledOrders,
+    cancellationRate: Math.round(cancellationRate * 10) / 10,
+    previousMAU,
+    mauChangePercent: Math.round(mauChangePercent * 10) / 10,
+  };
+
   // ============ EVENT LOG ============
   const logEntry = {
     month: newState.month,

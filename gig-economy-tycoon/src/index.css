@@ -2,7 +2,7 @@
 
 @layer base {
   body {
-    @apply bg-gray-950 text-gray-100 font-sans;
+    @apply bg-[#0a0a1a] text-gray-100 font-sans;
   }
 }
 
@@ -15,37 +15,84 @@
     from { opacity: 0; transform: translateX(20px); }
     to { opacity: 1; transform: translateX(0); }
   }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(56, 189, 248, 0.2); }
+    50% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
+  }
+  @keyframes save-flash {
+    0% { opacity: 0; transform: translateY(-10px) scale(0.9); }
+    20% { opacity: 1; transform: translateY(0) scale(1); }
+    80% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-10px) scale(0.9); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
+  }
   .animate-fade-in {
     animation: fade-in 0.3s ease-out;
   }
   .animate-slide-in {
     animation: slide-in 0.3s ease-out;
   }
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  .animate-save-flash {
+    animation: save-flash 2.5s ease-in-out forwards;
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.1) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
 }
 
 @layer components {
   .metric-card {
-    @apply bg-gray-900 border border-gray-800 rounded-lg p-3 flex flex-col gap-1;
+    @apply bg-[#111128] border border-purple-500/20 rounded-2xl p-4 flex flex-col gap-1 backdrop-blur-sm;
   }
   .tab-btn {
-    @apply px-4 py-2 rounded-t-lg text-sm font-medium transition-all duration-200;
+    @apply px-4 py-2.5 rounded-t-xl text-sm font-medium transition-all duration-200;
   }
   .tab-btn-active {
-    @apply bg-gray-900 text-emerald-400 border-b-2 border-emerald-400;
+    @apply bg-[#111128] text-cyan-400 border-b-2 border-cyan-400 shadow-lg shadow-cyan-500/10;
   }
   .tab-btn-inactive {
-    @apply bg-gray-950 text-gray-400 hover:text-gray-200;
+    @apply bg-transparent text-gray-400 hover:text-purple-300 hover:bg-purple-500/5;
   }
   .btn-primary {
-    @apply bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-medium px-4 py-2 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20;
   }
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200;
+    @apply bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-medium px-4 py-2 rounded-xl transition-all duration-200 shadow-lg shadow-rose-500/20;
   }
   .btn-secondary {
-    @apply bg-gray-700 hover:bg-gray-600 text-gray-100 font-medium px-4 py-2 rounded-lg transition-all duration-200;
+    @apply bg-[#1a1a3e] hover:bg-[#252560] text-gray-100 font-medium px-4 py-2 rounded-xl transition-all duration-200 border border-purple-500/20;
   }
   .slider-input {
-    @apply w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500;
+    @apply w-full h-2 bg-[#1a1a3e] rounded-lg appearance-none cursor-pointer accent-cyan-500;
+  }
+  .glass-card {
+    @apply bg-[#111128]/80 backdrop-blur-md border border-purple-500/15 rounded-2xl;
+  }
+  .neon-border {
+    @apply border border-cyan-500/30 shadow-lg shadow-cyan-500/5;
+  }
+  .trend-badge-up {
+    @apply inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30;
+  }
+  .trend-badge-down {
+    @apply inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30;
+  }
+  .trend-badge-neutral {
+    @apply inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30;
   }
 }

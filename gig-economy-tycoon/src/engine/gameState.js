@@ -127,8 +127,22 @@ export function createInitialState(config) {
     mauGrowthRate: 0.05,
     marketShare: 5,
     consumerSatisfaction: 70,
-    consumerRetention: 85, // NEW: consumer retention %
+    consumerRetention: 85, // consumer retention %
     averageWaitTime: 8, // minutes
+
+    // Advanced User Analytics
+    userAnalytics: {
+      loyalCustomers: 700,
+      promoHunters: 200,
+      churnedUsers: 100,
+      avgTripDistance: 6.8, // km
+      avgDeliveryTime: 24.5, // minutes
+      dailyOrderVolume: 850,
+      cancelledOrders: 45,
+      cancellationRate: 5.3, // %
+      previousMAU: 1000,
+      mauChangePercent: 0,
+    },
 
     // Driver Metrics
     activeDrivers: 500,
