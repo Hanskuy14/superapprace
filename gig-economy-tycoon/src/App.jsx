@@ -7,6 +7,7 @@ import OperationsTab from './components/OperationsTab';
 import ServicesTab from './components/ServicesTab';
 import MarketingTab from './components/MarketingTab';
 import CapitalTab from './components/CapitalTab';
+import CashFlowLedger from './components/CashFlowLedger';
 import CrisisModal from './components/CrisisModal';
 import NotificationToast from './components/NotificationToast';
 import GameOverScreen from './components/GameOverScreen';
@@ -36,12 +37,24 @@ function gameReducer(state, action) {
       if (!round || action.roundIndex !== state.fundingRound) return state;
       if (state.mau < round.requiredMAU) return state;
       let newState = { ...state };
-      newState.cash += round.maxRaise;
-      newState.totalRaised += round.maxRaise;
+      // Apply market sentiment multiplier to raise
+      const effectiveRaise = Math.floor(round.maxRaise * newState.valuationMultiplier);
+      newState.cash += effectiveRaise;
+      newState.totalRaised += effectiveRaise;
       newState.founderEquity -= round.dilution;
-      newState.valuation = round.targetValuation;
+      newState.valuation = Math.floor(round.targetValuation * newState.valuationMultiplier);
       newState.fundingRound += 1;
-      newState.notifications = [{ type: 'success', message: `💰 ${round.name} closed! Raised ${(round.maxRaise / 1_000_000_000).toFixed(0)}M IDR at ${(round.targetValuation / 1_000_000_000_000).toFixed(1)}T valuation.` }];
+      // Update cash flow ledger
+      newState.cashFlow = {
+        ...newState.cashFlow,
+        inflow: {
+          ...newState.cashFlow.inflow,
+          vcFunding: effectiveRaise,
+          totalInflow: newState.cashFlow.inflow.totalInflow + effectiveRaise,
+        },
+        netCashFlow: newState.cashFlow.netCashFlow + effectiveRaise,
+      };
+      newState.notifications = [{ type: 'success', message: `💰 ${round.name} closed! Raised ${(effectiveRaise / 1_000_000_000).toFixed(0)}M IDR at ${(newState.valuation / 1_000_000_000_000).toFixed(1)}T valuation.` }];
       return newState;
     }
     case 'EXECUTE_IPO':
@@ -76,7 +89,7 @@ function CommandCenter({ state, dispatch }) {
   }, [dispatch]);
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-950 pb-16">
       {/* Notifications */}
       <NotificationToast notifications={state.notifications} />
 
@@ -89,7 +102,7 @@ function CommandCenter({ state, dispatch }) {
       <MetricsBar state={state} />
 
       {/* Tab Navigation */}
-      <div className="sticky top-[140px] z-40 bg-gray-950 border-b border-gray-800">
+      <div className="sticky top-[220px] z-40 bg-gray-950 border-b border-gray-800">
         <div className="flex items-center justify-between px-4">
           <div className="flex gap-1">
             {TABS.map(tab => (
@@ -115,12 +128,24 @@ function CommandCenter({ state, dispatch }) {
         </div>
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Content + Cash Flow Sidebar */}
       <div className="p-4 max-w-7xl mx-auto">
-        {activeTab === 'operations' && <OperationsTab state={state} dispatch={dispatch} />}
-        {activeTab === 'services' && <ServicesTab state={state} dispatch={dispatch} />}
-        {activeTab === 'marketing' && <MarketingTab state={state} dispatch={dispatch} />}
-        {activeTab === 'capital' && <CapitalTab state={state} dispatch={dispatch} />}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          {/* Main Content Area */}
+          <div className="xl:col-span-3">
+            {activeTab === 'operations' && <OperationsTab state={state} dispatch={dispatch} />}
+            {activeTab === 'services' && <ServicesTab state={state} dispatch={dispatch} />}
+            {activeTab === 'marketing' && <MarketingTab state={state} dispatch={dispatch} />}
+            {activeTab === 'capital' && <CapitalTab state={state} dispatch={dispatch} />}
+          </div>
+
+          {/* Persistent Cash Flow Ledger Sidebar */}
+          <div className="xl:col-span-1">
+            <div className="sticky top-[270px]">
+              <CashFlowLedger state={state} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Event Log Ticker */}
