@@ -1,6 +1,6 @@
 // ============================================================
 // GIG ECONOMY TYCOON: THE SUPER-APP RACE
-// Core Game State & Constants
+// Core Game State & Constants — v2.0 Rebalanced
 // ============================================================
 
 export const TERRITORIES = [
@@ -15,12 +15,12 @@ export const TERRITORIES = [
 ];
 
 export const SERVICES = [
-  { id: 'ojol_bike', name: 'Ojol Motor', icon: '🏍️', unlockCost: 0, techPoints: 0, revenueMultiplier: 1.0, complexityLoad: 1.0, description: 'Layanan ojek online motor — tulang punggung bisnis' },
-  { id: 'ojol_car', name: 'Ojol Mobil', icon: '🚗', unlockCost: 20_000_000_000, techPoints: 5, revenueMultiplier: 1.8, complexityLoad: 1.3, description: 'Layanan taksi online premium' },
-  { id: 'food_delivery', name: 'Pesan Makan', icon: '🍜', unlockCost: 50_000_000_000, techPoints: 10, revenueMultiplier: 2.5, complexityLoad: 2.0, description: 'Delivery makanan dari restoran & warung' },
-  { id: 'courier', name: 'Kurir Instan', icon: '📦', unlockCost: 80_000_000_000, techPoints: 15, revenueMultiplier: 2.0, complexityLoad: 1.8, description: 'Same-day logistics & paket kilat' },
-  { id: 'fintech', name: 'Dompet Digital & PayLater', icon: '💳', unlockCost: 150_000_000_000, techPoints: 30, revenueMultiplier: 4.0, complexityLoad: 3.5, description: 'E-Wallet, QRIS, dan fitur PayLater' },
-  { id: 'mart', name: 'Super Mart', icon: '🛒', unlockCost: 100_000_000_000, techPoints: 20, revenueMultiplier: 2.2, complexityLoad: 2.5, description: 'Belanja groceries instant delivery' },
+  { id: 'ojol_bike', name: 'Ojol Motor', icon: '🏍️', unlockCost: 0, techPoints: 0, revenueMultiplier: 1.0, complexityLoad: 1.0, description: 'Layanan ojek online motor — tulang punggung bisnis', monthlyBaseRevenue: 0.35 },
+  { id: 'ojol_car', name: 'Ojol Mobil', icon: '🚗', unlockCost: 20_000_000_000, techPoints: 5, revenueMultiplier: 1.8, complexityLoad: 1.3, description: 'Layanan taksi online premium', monthlyBaseRevenue: 0.25 },
+  { id: 'food_delivery', name: 'Pesan Makan', icon: '🍜', unlockCost: 50_000_000_000, techPoints: 10, revenueMultiplier: 2.5, complexityLoad: 2.0, description: 'Delivery makanan dari restoran & warung', monthlyBaseRevenue: 0.20 },
+  { id: 'courier', name: 'Kurir Instan', icon: '📦', unlockCost: 80_000_000_000, techPoints: 15, revenueMultiplier: 2.0, complexityLoad: 1.8, description: 'Same-day logistics & paket kilat', monthlyBaseRevenue: 0.10 },
+  { id: 'fintech', name: 'Dompet Digital & PayLater', icon: '💳', unlockCost: 150_000_000_000, techPoints: 30, revenueMultiplier: 4.0, complexityLoad: 3.5, description: 'E-Wallet, QRIS, dan fitur PayLater', monthlyBaseRevenue: 0.08 },
+  { id: 'mart', name: 'Super Mart', icon: '🛒', unlockCost: 100_000_000_000, techPoints: 20, revenueMultiplier: 2.2, complexityLoad: 2.5, description: 'Belanja groceries instant delivery', monthlyBaseRevenue: 0.02 },
 ];
 
 export const FUNDING_ROUNDS = [
@@ -37,6 +37,16 @@ export const COMPETITORS = [
   { id: 'gojak', name: 'GoJak', color: '#00aa13', aggression: 0.6, marketShare: 35 },
   { id: 'maxim_id', name: 'Maxim Indo', color: '#ff6600', aggression: 0.4, marketShare: 10 },
   { id: 'indrive_id', name: 'InDrive Lokal', color: '#c026d3', aggression: 0.3, marketShare: 5 },
+];
+
+// Market sentiment events that affect valuation multiplier
+export const MARKET_SENTIMENTS = [
+  { id: 'ai_hype', name: 'AI/Tech Hype Cycle', multiplier: 1.4, description: 'Investor frenzy over AI integration boosts tech valuations', chance: 0.12 },
+  { id: 'fintech_boom', name: 'FinTech Boom', multiplier: 1.3, description: 'Digital payment adoption surge increases super-app valuations', chance: 0.10 },
+  { id: 'recession_fear', name: 'Recession Fear', multiplier: 0.7, description: 'Global recession fears reduce risk appetite', chance: 0.08 },
+  { id: 'regulatory_crackdown', name: 'Tech Regulatory Crackdown', multiplier: 0.8, description: 'Government scrutiny dampens tech sector', chance: 0.06 },
+  { id: 'ipo_window', name: 'IPO Window Open', multiplier: 1.25, description: 'Strong public markets encourage pre-IPO valuations', chance: 0.08 },
+  { id: 'neutral', name: 'Stable Market', multiplier: 1.0, description: 'Normal market conditions', chance: 0.56 },
 ];
 
 export const CRISES = [
@@ -117,6 +127,7 @@ export function createInitialState(config) {
     mauGrowthRate: 0.05,
     marketShare: 5,
     consumerSatisfaction: 70,
+    consumerRetention: 85, // NEW: consumer retention %
     averageWaitTime: 8, // minutes
 
     // Driver Metrics
@@ -141,13 +152,39 @@ export function createInitialState(config) {
     unlockedServices: ['ojol_bike'],
 
     // Financial
-    cash: config.startingCash || 15_000_000_000, // 15B IDR seed
+    cash: config.startingCash || 15_000_000_000,
     revenue: 0,
     burnRate: 0,
     ebitda: 0,
     takeRate: 20, // %
     totalRaised: config.startingCash || 15_000_000_000,
     valuation: 50_000_000_000,
+
+    // NEW: Cash Flow Ledger (per-tick breakdown)
+    cashFlow: {
+      inflow: {
+        rideCommissions: 0,
+        vcFunding: 0,
+        fintechInterest: 0,
+        totalInflow: 0,
+      },
+      outflow: {
+        consumerSubsidies: 0,
+        driverBonuses: 0,
+        serverCosts: 0,
+        staffSalaries: 0,
+        marketingOverhead: 0,
+        totalOutflow: 0,
+      },
+      netCashFlow: 0,
+    },
+
+    // NEW: Sub-Service Performance Breakdown
+    servicePerformance: {},
+
+    // NEW: Dynamic Valuation
+    marketSentiment: { id: 'neutral', name: 'Stable Market', multiplier: 1.0, description: 'Normal market conditions' },
+    valuationMultiplier: 1.0,
 
     // Marketing
     consumerVoucherBudget: 2_000_000_000,

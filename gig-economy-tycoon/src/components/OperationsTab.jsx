@@ -1,5 +1,33 @@
 import { formatIDR } from './MetricsBar';
 
+function StatusIndicator({ value, thresholds = { green: 70, yellow: 40 }, label }) {
+  let color, bgColor, borderColor;
+  if (value >= thresholds.green) {
+    color = 'text-emerald-400'; bgColor = 'bg-emerald-500/10'; borderColor = 'border-emerald-500/30';
+  } else if (value >= thresholds.yellow) {
+    color = 'text-amber-400'; bgColor = 'bg-amber-500/10'; borderColor = 'border-amber-500/30';
+  } else {
+    color = 'text-red-400'; bgColor = 'bg-red-500/10'; borderColor = 'border-red-500/30';
+  }
+  return (
+    <div className={`p-3 rounded-lg border ${bgColor} ${borderColor}`}>
+      <div className="flex justify-between mb-2">
+        <span className="text-sm text-gray-300">{label}</span>
+        <span className={`text-sm font-bold ${color}`}>{Math.round(value)}%</span>
+      </div>
+      <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${
+            value >= thresholds.green ? 'bg-emerald-500' :
+            value >= thresholds.yellow ? 'bg-amber-500' : 'bg-red-500'
+          }`}
+          style={{ width: `${Math.min(100, value)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function OperationsTab({ state, dispatch }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -42,13 +70,11 @@ export default function OperationsTab({ state, dispatch }) {
                 state.surgeEnabled ? 'bg-emerald-500' : 'bg-gray-600'
               }`}
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                state.surgeEnabled ? 'left-6.5 translate-x-0' : 'left-0.5'
-              }`} style={{ left: state.surgeEnabled ? '26px' : '2px' }} />
+              <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform" style={{ left: state.surgeEnabled ? '26px' : '2px' }} />
             </button>
           </div>
           {state.surgeEnabled && (
-            <div className="text-xs text-amber-400 bg-amber-500/10 p-2 rounded">
+            <div className="text-xs text-amber-400 bg-amber-500/10 p-2 rounded border border-amber-500/20">
               ⚡ Surge aktif: {state.surgeMultiplier.toFixed(1)}x multiplier saat ini
             </div>
           )}
@@ -83,29 +109,16 @@ export default function OperationsTab({ state, dispatch }) {
             </div>
           </div>
 
-          {/* Driver Satisfaction Gauge */}
-          <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="flex justify-between mb-2">
-              <span className="text-sm text-gray-300">Driver Satisfaction</span>
-              <span className={`text-sm font-bold ${
-                state.driverSatisfaction > 60 ? 'text-emerald-400' :
-                state.driverSatisfaction > 35 ? 'text-amber-400' : 'text-red-400'
-              }`}>{Math.round(state.driverSatisfaction)}%</span>
-            </div>
-            <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  state.driverSatisfaction > 60 ? 'bg-emerald-500' :
-                  state.driverSatisfaction > 35 ? 'bg-amber-500' : 'bg-red-500'
-                }`}
-                style={{ width: `${state.driverSatisfaction}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {state.driverSatisfaction > 60 ? '😊 Driver puas dan loyal' :
-               state.driverSatisfaction > 35 ? '😐 Mulai ada keluhan. Hati-hati!' : '😤 BAHAYA! Risiko mogok massal tinggi!'}
-            </p>
-          </div>
+          {/* Driver Satisfaction */}
+          <StatusIndicator
+            value={state.driverSatisfaction}
+            thresholds={{ green: 60, yellow: 35 }}
+            label="Driver Satisfaction"
+          />
+          <p className="text-xs text-gray-500 -mt-2 px-1">
+            {state.driverSatisfaction > 60 ? '😊 Driver puas dan loyal' :
+             state.driverSatisfaction > 35 ? '😐 Mulai ada keluhan. Hati-hati!' : '😤 BAHAYA! Risiko mogok massal tinggi!'}
+          </p>
         </div>
       </div>
 
@@ -135,65 +148,58 @@ export default function OperationsTab({ state, dispatch }) {
             </div>
           </div>
 
-          {/* App Stability Gauge */}
-          <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="flex justify-between mb-2">
-              <span className="text-sm text-gray-300">App Stability</span>
-              <span className={`text-sm font-bold ${
-                state.appStability > 75 ? 'text-emerald-400' :
-                state.appStability > 50 ? 'text-amber-400' : 'text-red-400'
-              }`}>{Math.round(state.appStability)}%</span>
-            </div>
-            <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  state.appStability > 75 ? 'bg-emerald-500' :
-                  state.appStability > 50 ? 'bg-amber-500' : 'bg-red-500'
-                }`}
-                style={{ width: `${state.appStability}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Tech Points: {state.techPoints} | Services Active: {state.unlockedServices.length}
-            </p>
-          </div>
+          {/* App Stability */}
+          <StatusIndicator
+            value={state.appStability}
+            thresholds={{ green: 75, yellow: 50 }}
+            label="App Stability"
+          />
+          <p className="text-xs text-gray-500 -mt-2 px-1">
+            Tech Points: {state.techPoints} | Services Active: {state.unlockedServices.length}
+          </p>
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Unit Economics */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <h3 className="text-lg font-bold text-white mb-4">📊 Unit Economics</h3>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
+        <div className="space-y-2">
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
             <span className="text-sm text-gray-400">Take Rate (Platform Cut)</span>
             <span className="text-sm font-mono text-emerald-400">{state.takeRate}%</span>
           </div>
-          <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
             <span className="text-sm text-gray-400">Avg Wait Time</span>
             <span className={`text-sm font-mono ${state.averageWaitTime > 10 ? 'text-red-400' : 'text-emerald-400'}`}>
               {state.averageWaitTime.toFixed(1)} menit
             </span>
           </div>
-          <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
             <span className="text-sm text-gray-400">Revenue/bulan</span>
             <span className="text-sm font-mono text-emerald-400">{formatIDR(state.revenue)}</span>
           </div>
-          <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
             <span className="text-sm text-gray-400">EBITDA/bulan</span>
-            <span className={`text-sm font-mono ${state.ebitda >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {formatIDR(state.ebitda)}
+            <span className={`text-sm font-mono font-bold ${state.ebitda >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {state.ebitda >= 0 ? '+' : ''}{formatIDR(state.ebitda)}
             </span>
           </div>
-          <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
             <span className="text-sm text-gray-400">Consumer Satisfaction</span>
             <span className={`text-sm font-mono ${state.consumerSatisfaction > 60 ? 'text-emerald-400' : 'text-amber-400'}`}>
               {Math.round(state.consumerSatisfaction)}%
             </span>
           </div>
-          <div className="flex justify-between items-center p-2 bg-gray-800 rounded">
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
             <span className="text-sm text-gray-400">Driver Supply Ratio</span>
             <span className={`text-sm font-mono ${state.driverSupplyRatio >= 0.8 ? 'text-emerald-400' : 'text-red-400'}`}>
               {(state.driverSupplyRatio * 100).toFixed(0)}%
+            </span>
+          </div>
+          <div className="flex justify-between items-center p-2.5 bg-gray-800 rounded-lg">
+            <span className="text-sm text-gray-400">Consumer Retention</span>
+            <span className={`text-sm font-mono ${state.consumerRetention > 75 ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {Math.round(state.consumerRetention)}%
             </span>
           </div>
         </div>
